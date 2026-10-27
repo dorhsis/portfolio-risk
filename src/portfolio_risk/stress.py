@@ -2,11 +2,15 @@
 
 Holdings that did not trade through the whole scenario (later IPOs) are proxied by
 beta * benchmark return, and reported as proxied so the reader knows the number is an estimate.
+A long position can lose at most its whole value, so the proxy is floored at -100%: with beta 2
+and a 60% market drop the linear estimate alone would be -120%.
 """
 
 from dataclasses import dataclass
 
 import pandas as pd
+
+TOTAL_LOSS = -1.0
 
 
 @dataclass(frozen=True)
@@ -49,7 +53,7 @@ def run_scenario(
     for ticker in map(str, weights.index):
         asset_return = _window_return(prices[ticker], scenario) if ticker in prices else None
         if asset_return is None:
-            asset_return = float(betas[ticker]) * benchmark_return
+            asset_return = max(float(betas[ticker]) * benchmark_return, TOTAL_LOSS)
             proxied.append(ticker)
         total += float(weights[ticker]) * asset_return
 

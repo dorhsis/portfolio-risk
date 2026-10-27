@@ -42,6 +42,22 @@ def test_holdings_without_history_are_proxied_by_beta_times_benchmark() -> None:
     assert result.proxied == ["B"]
 
 
+def test_proxied_holding_cannot_lose_more_than_its_whole_value() -> None:
+    nan = np.nan
+    prices = _prices(
+        A=[100, 100, 100, 80, 50, 50],
+        B=[nan, nan, nan, nan, 12, 12],
+        SPY=[200, 200, 200, 150, 80, 80],
+    )
+    weights = pd.Series({"A": 0.5, "B": 0.5})
+
+    result = run_scenario(SCENARIO, prices, weights, benchmark="SPY", betas=pd.Series({"B": 2.0}))
+
+    assert result.benchmark_return == pytest.approx(-0.6)
+    assert result.portfolio_return == pytest.approx(0.5 * -0.5 + 0.5 * -1.0)
+    assert result.proxied == ["B"]
+
+
 def test_scenario_dates_on_non_trading_days_use_the_last_prior_close() -> None:
     weekend = Scenario("Weekend", pd.Timestamp("2024-01-06"), pd.Timestamp("2024-01-07"))
     prices = _prices(A=[100, 100, 100, 100, 90, 70], SPY=[1, 1, 1, 1, 1, 1])
