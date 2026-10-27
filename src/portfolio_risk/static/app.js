@@ -108,12 +108,12 @@ function drawCharts(container) {
   requestAnimationFrame(() => requestAnimationFrame(() => charts.forEach((chart) => chart.classList.add("is-drawn"))));
 }
 
-function section(title, lede, ...content) {
-  const id = `section-${title.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, "-")}`;
+// `nav` is the section's label in the sticky section menu; `meta` sits next to the title.
+function section({ id, title, nav, lede, meta }, ...content) {
   return el(
     "section",
-    { class: "panel", "aria-labelledby": id },
-    el("h2", { id, class: "section-title", text: title }),
+    { id, class: "card", "aria-labelledby": `${id}-title`, "data-nav": nav },
+    el("div", { class: "card__head" }, el("h2", { id: `${id}-title`, class: "card__title", text: title }), meta),
     lede ? el("p", { class: "section-lede", text: lede }) : null,
     ...content,
   );
@@ -155,20 +155,23 @@ function renderHead(report) {
   const drawdown = risk.max_drawdown;
   const kpi = (label, value, note) =>
     el("div", { class: "kpi" }, el("p", { class: "kpi__label", text: label }), el("p", { class: "kpi__value", text: value }), el("p", { class: "kpi__note", text: note }));
+  const chip = (text) => el("li", { class: "chip", text });
 
-  return el(
-    "div",
-    { class: "panel" },
-    el(
-      "header",
-      { class: "summary" },
-      el("h2", { class: "summary__eyebrow", text: `Портфель на ${date(report.as_of)} · бенчмарк ${report.benchmark}` }),
-      el("p", { class: "summary__total", text: usd(report.total_value) }),
-      el("p", {
-        class: "summary__window",
-        text: `Риск оценён с ${date(report.window.start)}, торговых дней: ${report.window.observations}`,
-      }),
-    ),
+  return section(
+    {
+      id: "overview",
+      title: "Обзор",
+      nav: "Обзор",
+      meta: el(
+        "ul",
+        { class: "chips", "aria-label": "Параметры расчёта" },
+        chip(`Цены на ${date(report.as_of)}`),
+        chip(`Бенчмарк ${report.benchmark}`),
+        chip(`Торговых дней: ${report.window.observations} с ${date(report.window.start)}`),
+      ),
+    },
+    el("p", { class: "overview__label", text: "Стоимость портфеля" }),
+    el("p", { class: "overview__total", text: usd(report.total_value) }),
     el(
       "div",
       { class: "kpis" },
@@ -215,12 +218,16 @@ function renderWeightRisk(report) {
   });
 
   return section(
-    "Вес против риска",
-    "Сколько позиция весит в портфеле и какую долю общего риска она даёт. Риск считается с учётом того, как бумаги двигаются вместе, поэтому он редко совпадает с весом.",
-    legend([
-      ["yard", "Вес в портфеле"],
-      ["risk", "Доля риска"],
-    ]),
+    {
+      id: "weight-risk",
+      title: "Вес против риска",
+      nav: "Вес и риск",
+      lede: "Сколько позиция весит в портфеле и какую долю общего риска она даёт. Риск считается с учётом того, как бумаги двигаются вместе, поэтому он редко совпадает с весом.",
+      meta: legend([
+        ["yard", "Вес в портфеле"],
+        ["risk", "Доля риска"],
+      ]),
+    },
     el("ol", { class: "weight-risk chart" }, rows),
   );
 }
@@ -253,12 +260,16 @@ function renderStress(report) {
   );
 
   return section(
-    "Если бы кризис повторился",
-    "Текущие веса портфеля в окнах от пика до дна индекса S&P 500.",
-    legend([
-      ["risk", "Портфель"],
-      ["yard", report.benchmark],
-    ]),
+    {
+      id: "stress",
+      title: "Если бы кризис повторился",
+      nav: "Кризисы",
+      lede: "Текущие веса портфеля в окнах от пика до дна индекса S&P 500.",
+      meta: legend([
+        ["risk", "Портфель"],
+        ["yard", report.benchmark],
+      ]),
+    },
     el(
       "div",
       { class: "chart" },
@@ -290,7 +301,8 @@ function renderStructure(report) {
   const pairs = correlation.high_pairs;
   const threshold = formats.decimal.format(correlation.alert_threshold);
 
-  const fact = (label, value, note) => [el("dt", { text: label }), el("dd", {}, value, el("span", { class: "facts__note", text: note }))];
+  const fact = (label, value, note) =>
+    el("div", { class: "fact" }, el("dt", { text: label }), el("dd", {}, value, el("span", { class: "facts__note", text: note })));
 
   const facts = el(
     "dl",
@@ -327,16 +339,16 @@ function renderStructure(report) {
     : el("p", { class: "hint", text: "Секторы не удалось определить." });
 
   return section(
-    "Концентрация",
-    null,
+    { id: "structure", title: "Концентрация", nav: "Концентрация" },
     el("div", { class: "structure" }, facts, el("div", {}, el("p", { class: "subhead", text: "Секторы по стоимости" }), sectorBlock)),
   );
 }
 
 function renderFactors(report) {
   const exposure = report.factors;
+  const heading = { id: "factors", title: "Факторный профиль", nav: "Факторы" };
   if (!exposure) {
-    return section("Факторный профиль", null, el("p", { class: "section-note", text: `Факторы не посчитаны: ${report.factors_note}.` }));
+    return section(heading, el("p", { class: "section-note", text: `Факторы не посчитаны: ${report.factors_note}.` }));
   }
   const entries = Object.entries(exposure.loadings);
   const scale = signedScale(entries.map(([, value]) => value));
@@ -351,8 +363,10 @@ function renderFactors(report) {
   );
 
   return section(
-    "Факторный профиль",
-    "Регрессия доходности на факторы Fama–French и моментум. Рынок около 1 — портфель движется как рынок; плюс у остальных — наклон в сторону фактора, минус — против него.",
+    {
+      ...heading,
+      lede: "Регрессия доходности на факторы Fama–French и моментум. Рынок около 1 — портфель движется как рынок; плюс у остальных — наклон в сторону фактора, минус — против него.",
+    },
     el("ul", { class: "factor-list chart" }, rows),
     el("p", {
       class: "section-note",
@@ -380,8 +394,7 @@ function renderPositions(report) {
     ),
   );
   return section(
-    "Позиции",
-    null,
+    { id: "positions", title: "Позиции", nav: "Позиции" },
     table(
       [
         ["Тикер", false],
@@ -396,6 +409,38 @@ function renderPositions(report) {
       rows,
     ),
   );
+}
+
+// Section menu
+
+function renderNav(nav, targets) {
+  nav.replaceChildren(...targets.map((target) => el("a", { class: "report-nav__link", href: `#${target.id}`, text: target.dataset.nav })));
+}
+
+// The current section is the last one whose top has scrolled up to the menu. At the bottom of the
+// page it is the last section, which may be too short to ever reach the menu.
+function markCurrentSection(nav, targets) {
+  if (!targets.length) return;
+  const line = nav.getBoundingClientRect().bottom + 16;
+  const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+  let current = 0;
+  targets.forEach((target, index) => {
+    if (target.getBoundingClientRect().top <= line) current = index;
+  });
+  if (atBottom) current = targets.length - 1;
+
+  nav.querySelectorAll("a").forEach((link, index) => {
+    if (index !== current) {
+      link.removeAttribute("aria-current");
+    } else if (!link.hasAttribute("aria-current")) {
+      link.setAttribute("aria-current", "true");
+      // On narrow screens the menu scrolls sideways; keep the current item in view.
+      nav.scrollTo({
+        left: link.offsetLeft - (nav.clientWidth - link.offsetWidth) / 2,
+        behavior: reducedMotion.matches ? "auto" : "smooth",
+      });
+    }
+  });
 }
 
 // Network
@@ -461,8 +506,10 @@ function init() {
   const fileInput = document.getElementById("csv-file");
   const reportNode = document.getElementById("report");
   const empty = document.getElementById("empty");
+  const skeleton = document.getElementById("skeleton");
   const errorBox = document.getElementById("error");
   const result = document.getElementById("result");
+  const nav = document.getElementById("report-nav");
   const head = document.getElementById("report-head");
   const body = document.getElementById("report-body");
   const explainForm = document.getElementById("explain-form");
@@ -470,6 +517,19 @@ function init() {
   const explainError = document.getElementById("explain-error");
   const explanation = document.getElementById("explanation");
   let currentReport = null;
+  let sections = [];
+  let navFrame = 0;
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      navFrame ||= requestAnimationFrame(() => {
+        navFrame = 0;
+        markCurrentSection(nav, sections);
+      });
+    },
+    { passive: true },
+  );
 
   const showError = (error) => {
     document.getElementById("error-detail").textContent = error.detail;
@@ -504,8 +564,14 @@ function init() {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     submit.disabled = true;
+    submit.setAttribute("aria-busy", "true");
     errorBox.hidden = true;
     reportNode.setAttribute("aria-busy", "true");
+    // A report already on screen is dimmed while it updates; the first one gets a placeholder.
+    if (result.hidden) {
+      empty.hidden = true;
+      skeleton.hidden = false;
+    }
     const stopClock = startClock(
       document.getElementById("status-text"),
       document.getElementById("status-clock"),
@@ -517,7 +583,7 @@ function init() {
         {
           portfolio: portfolio.value,
           benchmark: benchmark.value.trim().toUpperCase() || "SPY",
-          lookback_years: Number(document.getElementById("lookback").value),
+          lookback_years: Number(form.elements.lookback.value),
           factors: document.getElementById("factors").checked,
         },
         REPORT_TIMEOUT_MS,
@@ -526,8 +592,11 @@ function init() {
       head.replaceChildren(renderHead(report));
       body.replaceChildren(renderWeightRisk(report), renderStress(report), renderStructure(report), renderFactors(report), renderPositions(report));
       resetExplanation();
+      sections = [...result.querySelectorAll("[data-nav]")];
+      renderNav(nav, sections);
       empty.hidden = true;
       result.hidden = false;
+      markCurrentSection(nav, sections);
       drawCharts(body);
       if (singleColumn.matches) {
         reportNode.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
@@ -540,7 +609,9 @@ function init() {
       showError(error);
     } finally {
       stopClock();
+      skeleton.hidden = true;
       submit.disabled = false;
+      submit.removeAttribute("aria-busy");
       reportNode.removeAttribute("aria-busy");
     }
   });
@@ -549,6 +620,7 @@ function init() {
     event.preventDefault();
     if (!currentReport) return;
     explainSubmit.disabled = true;
+    explainSubmit.setAttribute("aria-busy", "true");
     resetExplanation();
     const stopClock = startClock(
       document.getElementById("explain-status-text"),
@@ -570,6 +642,7 @@ function init() {
     } finally {
       stopClock();
       explainSubmit.disabled = false;
+      explainSubmit.removeAttribute("aria-busy");
     }
   });
 }

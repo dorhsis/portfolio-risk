@@ -17,29 +17,50 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <link rel="stylesheet" href="styles.css" />
     <script src="app.js" defer></script>
   </head>
   <body>
-    <header class="masthead">
-      <h1 class="masthead__title">Где живёт риск вашего портфеля</h1>
-      <p class="masthead__lede">
-        Вставьте позиции, и мы покажем, какие бумаги дают риск сверх своего веса и сколько
-        портфель потерял бы в кризисы 2000, 2008, 2020 и 2022 годов. Без советов, что купить.
-      </p>
+    <a class="skip-link" href="#report">Перейти к отчёту</a>
+
+    <header class="appbar">
+      <div class="appbar__inner">
+        <a class="brand" href="/">
+          <svg class="brand__mark" viewBox="0 0 20 20" aria-hidden="true">
+            <rect class="brand__yard" x="2" y="4" width="10" height="5" rx="1.5" />
+            <rect class="brand__risk" x="2" y="11" width="16" height="5" rx="1.5" />
+          </svg>
+          Риск портфеля
+        </a>
+        <a class="appbar__link" href="https://github.com/dorhsis/portfolio-risk">
+          Исходный код
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M5.5 4.5h6v6M11.5 4.5l-7 7" />
+          </svg>
+        </a>
+      </div>
     </header>
 
-    <main class="layout">
-      <form id="portfolio-form" class="panel portfolio-form" novalidate>
-        <h2 class="visually-hidden">Портфель</h2>
+    <main class="page">
+      <div class="page__head">
+        <h1 class="page__title">Где живёт риск вашего портфеля</h1>
+        <p class="page__lede">
+          Вставьте позиции, и мы покажем, какие бумаги дают риск сверх своего веса и сколько
+          портфель потерял бы в кризисы 2000, 2008, 2020 и 2022 годов. Без советов, что купить.
+        </p>
+      </div>
 
-        <div class="field">
-          <div class="field__head">
-            <label class="field__label" for="portfolio">Позиции</label>
-            <label class="file-button">
-              Загрузить CSV
+      <div class="layout">
+        <form id="portfolio-form" class="card portfolio-form" aria-labelledby="portfolio-title" novalidate>
+          <div class="card__head">
+            <h2 id="portfolio-title" class="card__title">Портфель</h2>
+            <label class="button button--secondary button--small">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 10.5v-8M4.75 5.75 8 2.5l3.25 3.25M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" />
+              </svg>
+              Загрузить файл
               <input
                 id="csv-file"
                 class="visually-hidden"
@@ -48,17 +69,20 @@
               />
             </label>
           </div>
-          <textarea
-            id="portfolio"
-            class="input input--code"
-            rows="12"
-            spellcheck="false"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="characters"
-            placeholder="AAPL 40&#10;MSFT 25"
-            aria-describedby="portfolio-hint"
-          >
+
+          <div class="field">
+            <label class="field__label" for="portfolio">Позиции</label>
+            <textarea
+              id="portfolio"
+              class="input input--code"
+              rows="10"
+              spellcheck="false"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="characters"
+              placeholder="AAPL 40&#10;MSFT 25"
+              aria-describedby="portfolio-hint"
+            >
 AAPL 40
 MSFT 25
 NVDA 60
@@ -69,13 +93,12 @@ XOM 30
 QQQ 10
 PLTR 50
 ARM 20</textarea>
-          <p id="portfolio-hint" class="hint">
-            По строке на бумагу: тикер и число акций через пробел, запятую или точку с запятой.
-            Подойдёт и CSV из Excel. Акции и ETF США, только длинные позиции, до 50 штук.
-          </p>
-        </div>
+            <p id="portfolio-hint" class="hint">
+              По строке на бумагу: тикер и число акций через пробел, запятую или точку с запятой.
+              Подойдёт и CSV из Excel. Акции и ETF США, только длинные позиции, до 50 штук.
+            </p>
+          </div>
 
-        <div class="field-row">
           <div class="field">
             <label class="field__label" for="benchmark">Бенчмарк</label>
             <input
@@ -88,71 +111,146 @@ ARM 20</textarea>
               autocomplete="off"
             />
           </div>
-          <div class="field">
-            <label class="field__label" for="lookback">Окно оценки</label>
-            <select id="lookback" class="input">
-              <option value="1">1 год</option>
-              <option value="3" selected>3 года</option>
-              <option value="5">5 лет</option>
-              <option value="10">10 лет</option>
-            </select>
-          </div>
-        </div>
 
-        <label class="check">
-          <input id="factors" type="checkbox" checked />
-          <span>Факторы Fama–French</span>
-        </label>
+          <fieldset class="field">
+            <legend class="field__label">Окно оценки</legend>
+            <div class="segmented">
+              <label class="segmented__option">
+                <input type="radio" name="lookback" value="1" />
+                <span>1 год</span>
+              </label>
+              <label class="segmented__option">
+                <input type="radio" name="lookback" value="3" checked />
+                <span>3 года</span>
+              </label>
+              <label class="segmented__option">
+                <input type="radio" name="lookback" value="5" />
+                <span>5 лет</span>
+              </label>
+              <label class="segmented__option">
+                <input type="radio" name="lookback" value="10" />
+                <span>10 лет</span>
+              </label>
+            </div>
+          </fieldset>
 
-        <button id="submit" class="button" type="submit">Посчитать риск</button>
-        <p class="status" role="status" aria-live="polite">
-          <span id="status-text"></span>
-          <span id="status-clock" class="status__clock" aria-hidden="true"></span>
-        </p>
-      </form>
+          <label class="switch">
+            <span>
+              Факторы Fama–French
+              <span class="switch__hint">Рынок, размер, value, прибыльность, инвестиции, моментум</span>
+            </span>
+            <input id="factors" class="switch__input" type="checkbox" role="switch" checked />
+            <span class="switch__track" aria-hidden="true"></span>
+          </label>
 
-      <section id="report" class="report" aria-label="Отчёт">
-        <div id="empty" class="empty">
-          <p class="empty__title">Отчёт появится здесь</p>
-          <p class="empty__text">
-            В форме уже лежит пример портфеля из десяти бумаг. Нажмите «Посчитать риск», чтобы
-            посмотреть, как выглядит отчёт, или замените позиции своими.
+          <button id="submit" class="button button--primary" type="submit">Посчитать риск</button>
+          <p class="status" role="status" aria-live="polite">
+            <span id="status-text"></span>
+            <span id="status-clock" class="status__clock" aria-hidden="true"></span>
           </p>
-        </div>
+        </form>
 
-        <div id="error" class="notice" role="alert" hidden>
-          <p class="notice__title">Не удалось посчитать риск</p>
-          <p id="error-detail" class="notice__detail"></p>
-          <p id="error-hint" class="notice__hint"></p>
-        </div>
-
-        <div id="result" class="result" hidden>
-          <div id="report-head"></div>
-
-          <section class="panel explain" aria-labelledby="explain-title">
-            <h2 id="explain-title" class="section-title">Объяснение простым языком</h2>
-            <p class="section-lede">
-              Языковая модель пересказывает цифры этого отчёта и не даёт советов. Нужен пароль
-              владельца сайта.
+        <section id="report" class="report" aria-label="Отчёт" tabindex="-1">
+          <div id="empty" class="card">
+            <h2 class="card__title">Отчёт появится здесь</h2>
+            <p class="empty__text">
+              В форме уже лежит пример портфеля из десяти бумаг. Нажмите «Посчитать риск», чтобы
+              посмотреть отчёт, или замените позиции своими.
             </p>
-            <form id="explain-form" class="explain__form">
-              <div class="field explain__field">
-                <label class="field__label" for="password">Пароль</label>
-                <input id="password" class="input" type="password" autocomplete="current-password" />
+            <ul class="empty__list">
+              <li>
+                <span class="empty__item">Вес против риска</span>
+                какие бумаги раскачивают портфель сильнее, чем весят
+              </li>
+              <li>
+                <span class="empty__item">Кризисы 2000, 2008, 2020 и 2022</span>
+                сколько портфель потерял бы в процентах и в долларах
+              </li>
+              <li>
+                <span class="empty__item">Концентрация</span>
+                эффективное число позиций, секторы и корреляции
+              </li>
+              <li>
+                <span class="empty__item">Факторный профиль</span>
+                наклон к рынку, размеру, value и моментуму
+              </li>
+              <li>
+                <span class="empty__item">Объяснение простым языком</span>
+                пересказ отчёта языковой моделью, по паролю
+              </li>
+            </ul>
+          </div>
+
+          <div id="skeleton" class="skeleton" aria-hidden="true" hidden>
+            <div class="card">
+              <span class="skeleton__line skeleton__line--title"></span>
+              <span class="skeleton__line skeleton__line--total"></span>
+              <div class="skeleton__tiles">
+                <span class="skeleton__tile"></span>
+                <span class="skeleton__tile"></span>
+                <span class="skeleton__tile"></span>
+                <span class="skeleton__tile"></span>
               </div>
-              <button id="explain-submit" class="button button--quiet" type="submit">Объяснить</button>
-            </form>
-            <p class="status" role="status" aria-live="polite">
-              <span id="explain-status-text"></span>
-              <span id="explain-status-clock" class="status__clock" aria-hidden="true"></span>
-            </p>
-            <p id="explain-error" class="notice__detail explain__error" role="alert" hidden></p>
-            <div id="explanation" class="explanation" hidden></div>
-          </section>
+            </div>
+            <div class="card">
+              <span class="skeleton__line skeleton__line--title"></span>
+              <span class="skeleton__line"></span>
+              <span class="skeleton__line skeleton__line--short"></span>
+              <span class="skeleton__line"></span>
+              <span class="skeleton__line skeleton__line--short"></span>
+            </div>
+          </div>
 
-          <div id="report-body"></div>
-        </div>
-      </section>
+          <div id="error" class="notice" role="alert" hidden>
+            <svg class="notice__icon" viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="10" cy="10" r="7.5" />
+              <path d="M10 6.25v4.5M10 13.5v.25" />
+            </svg>
+            <div>
+              <p class="notice__title">Не удалось посчитать риск</p>
+              <p id="error-detail" class="notice__detail"></p>
+              <p id="error-hint" class="notice__hint"></p>
+            </div>
+          </div>
+
+          <div id="result" class="result" hidden>
+            <nav id="report-nav" class="report-nav" aria-label="Разделы отчёта"></nav>
+
+            <div id="report-head" class="result__group"></div>
+
+            <section
+              id="explain"
+              class="card explain"
+              aria-labelledby="explain-title"
+              data-nav="Объяснение"
+            >
+              <div class="card__head">
+                <h2 id="explain-title" class="card__title">Объяснение простым языком</h2>
+                <span class="badge">Нужен пароль</span>
+              </div>
+              <p class="section-lede">
+                Языковая модель пересказывает цифры этого отчёта и не даёт советов. Пароль знает
+                владелец сайта.
+              </p>
+              <form id="explain-form" class="explain__form">
+                <div class="field explain__field">
+                  <label class="field__label" for="password">Пароль</label>
+                  <input id="password" class="input" type="password" autocomplete="current-password" />
+                </div>
+                <button id="explain-submit" class="button button--secondary" type="submit">Объяснить</button>
+              </form>
+              <p class="status" role="status" aria-live="polite">
+                <span id="explain-status-text"></span>
+                <span id="explain-status-clock" class="status__clock" aria-hidden="true"></span>
+              </p>
+              <p id="explain-error" class="notice__detail explain__error" role="alert" hidden></p>
+              <div id="explanation" class="explanation" hidden></div>
+            </section>
+
+            <div id="report-body" class="result__group"></div>
+          </div>
+        </section>
+      </div>
     </main>
 
     <footer class="footer">
@@ -160,8 +258,8 @@ ARM 20</textarea>
         Не инвестиционная рекомендация: отчёт описывает риск, а не то, что с ним делать. Котировки и
         секторы — Yahoo Finance (только для некоммерческого использования), факторы — Kenneth French
         Data Library, они обновляются с задержкой около двух месяцев.
-        <a href="https://github.com/dorhsis/portfolio-risk">Исходный код</a>
       </p>
+      <a href="https://github.com/dorhsis/portfolio-risk">Исходный код на GitHub</a>
     </footer>
   </body>
 </html>
