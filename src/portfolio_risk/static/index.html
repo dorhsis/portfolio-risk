@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Риск портфеля</title>
+    <meta
+      name="description"
+      content="Риск-аналитика портфеля американских акций: вклад каждой позиции в риск, концентрация, корреляции, факторы и исторические стресс-тесты."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='4' width='9' height='3' rx='1' fill='%233D78BE'/%3E%3Crect x='1' y='9' width='14' height='3' rx='1' fill='%23D9480F'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@500;700&display=swap"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <h1 class="masthead__title">Где живёт риск вашего портфеля</h1>
+      <p class="masthead__lede">
+        Вставьте позиции, и мы покажем, какие бумаги дают риск сверх своего веса и сколько
+        портфель потерял бы в кризисы 2000, 2008, 2020 и 2022 годов. Без советов, что купить.
+      </p>
+    </header>
+
+    <main class="layout">
+      <form id="portfolio-form" class="panel portfolio-form" novalidate>
+        <h2 class="visually-hidden">Портфель</h2>
+
+        <div class="field">
+          <div class="field__head">
+            <label class="field__label" for="portfolio">Позиции</label>
+            <label class="file-button">
+              Загрузить CSV
+              <input id="csv-file" class="visually-hidden" type="file" accept=".csv,text/csv" />
+            </label>
+          </div>
+          <textarea
+            id="portfolio"
+            class="input input--code"
+            rows="12"
+            spellcheck="false"
+            autocomplete="off"
+            aria-describedby="portfolio-hint"
+          >
+ticker,shares
+AAPL,40
+MSFT,25
+NVDA,60
+GOOGL,30
+BRK.B,15
+JPM,20
+XOM,30
+QQQ,10
+PLTR,50
+ARM,20</textarea>
+          <p id="portfolio-hint" class="hint">
+            CSV с колонками ticker и shares, по строке на бумагу. Акции и ETF США, только длинные
+            позиции, до 50 штук.
+          </p>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label class="field__label" for="benchmark">Бенчмарк</label>
+            <input
+              id="benchmark"
+              class="input input--code"
+              value="SPY"
+              maxlength="10"
+              autocapitalize="characters"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+          <div class="field">
+            <label class="field__label" for="lookback">Окно оценки</label>
+            <select id="lookback" class="input">
+              <option value="1">1 год</option>
+              <option value="3" selected>3 года</option>
+              <option value="5">5 лет</option>
+              <option value="10">10 лет</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="check">
+          <input id="factors" type="checkbox" checked />
+          <span>Факторы Fama–French</span>
+        </label>
+
+        <button id="submit" class="button" type="submit">Посчитать риск</button>
+        <p class="status" role="status" aria-live="polite">
+          <span id="status-text"></span>
+          <span id="status-clock" class="status__clock" aria-hidden="true"></span>
+        </p>
+      </form>
+
+      <section id="report" class="report" aria-label="Отчёт">
+        <div id="empty" class="empty">
+          <p class="empty__title">Отчёт появится здесь</p>
+          <p class="empty__text">
+            В форме уже лежит пример портфеля из десяти бумаг. Нажмите «Посчитать риск», чтобы
+            посмотреть, как выглядит отчёт, или замените позиции своими.
+          </p>
+        </div>
+
+        <div id="error" class="notice" role="alert" hidden>
+          <p class="notice__title">Не удалось посчитать риск</p>
+          <p id="error-detail" class="notice__detail"></p>
+          <p id="error-hint" class="notice__hint"></p>
+        </div>
+
+        <div id="result" class="result" hidden>
+          <div id="report-head"></div>
+
+          <section class="panel explain" aria-labelledby="explain-title">
+            <h2 id="explain-title" class="section-title">Объяснение простым языком</h2>
+            <p class="section-lede">
+              Языковая модель пересказывает цифры этого отчёта и не даёт советов. Нужен пароль
+              владельца сайта.
+            </p>
+            <form id="explain-form" class="explain__form">
+              <div class="field explain__field">
+                <label class="field__label" for="password">Пароль</label>
+                <input id="password" class="input" type="password" autocomplete="current-password" />
+              </div>
+              <button id="explain-submit" class="button button--quiet" type="submit">Объяснить</button>
+            </form>
+            <p class="status" role="status" aria-live="polite">
+              <span id="explain-status-text"></span>
+              <span id="explain-status-clock" class="status__clock" aria-hidden="true"></span>
+            </p>
+            <p id="explain-error" class="notice__detail explain__error" role="alert" hidden></p>
+            <div id="explanation" class="explanation" hidden></div>
+          </section>
+
+          <div id="report-body"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        Не инвестиционная рекомендация: отчёт описывает риск, а не то, что с ним делать. Котировки и
+        секторы — Yahoo Finance (только для некоммерческого использования), факторы — Kenneth French
+        Data Library, они обновляются с задержкой около двух месяцев.
+        <a href="https://github.com/dorhsis/portfolio-risk">Исходный код</a>
+      </p>
+    </footer>
+  </body>
+</html>

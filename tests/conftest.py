@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -47,3 +49,28 @@ def synthetic_market(young_start: str = "2025-01-02") -> MarketData:
 @pytest.fixture
 def market() -> MarketData:
     return synthetic_market()
+
+
+class FakeLoader:
+    """Stands in for the network loader: records each call and returns the synthetic market."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[list[str], str, bool]] = []
+
+    def __call__(self, tickers: list[str], benchmark: str, include_factors: bool) -> MarketData:
+        self.calls.append((tickers, benchmark, include_factors))
+        return synthetic_market()
+
+
+class FakeExplainer:
+    """Stands in for the LLM: records each report and returns or raises a canned result."""
+
+    def __init__(self, result: str | Exception = "Риск сосредоточен в AAA.") -> None:
+        self.result = result
+        self.reports: list[dict[str, Any]] = []
+
+    def __call__(self, report: dict[str, Any]) -> str:
+        self.reports.append(report)
+        if isinstance(self.result, Exception):
+            raise self.result
+        return self.result

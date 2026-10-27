@@ -1,0 +1,12 @@
+# Uploaded by `vercel deploy`: only what the build needs. Secrets live in Vercel env vars.
+.env
+.env.*
+.venv/
+.vercel/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+dist/
+tests/

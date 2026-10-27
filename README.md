@@ -79,6 +79,41 @@ uv run portfolio-risk examples/portfolio.csv --explain
 окружения имеют приоритет над `.env`. Если LLM недоступен, отчёт всё равно печатается,
 а код выхода — 1.
 
+## Веб-версия
+
+Та же аналитика в браузере: позиции вставляются в форму или загружаются CSV-файлом, отчёт
+рисуется графиками, объяснение от LLM доступно по паролю.
+
+```bash
+uv run uvicorn app:app --reload   # http://127.0.0.1:8000
+```
+
+| Эндпоинт | Запрос → ответ |
+|---|---|
+| `POST /api/report` | `{"portfolio": "<CSV>", "benchmark": "SPY", "lookback_years": 3, "factors": true}` → тот же JSON, что `--json` |
+| `POST /api/explain` | `{"report": {...}, "password": "..."}` → `{"explanation": "..."}` |
+
+Объяснение тратит квоту владельца LLM-ключа, поэтому оно выключено (503), пока на сервере не
+задан `EXPLAIN_PASSWORD`, а неверный пароль даёт 401. Ограничения: до 50 позиций в портфеле,
+отчёт для объяснения — до 50 000 символов. Ошибки ввода — 400/422, сбой источника котировок
+или LLM — 502, тело ошибки всегда `{"detail": "..."}`.
+
+### Деплой на Vercel
+
+`app.py` в корне — точка входа FastAPI. Vercel ставит пакет из `pyproject.toml` и `uv.lock`,
+версию Python берёт из `.python-version`. `.env` на Vercel не загружается (`.vercelignore`),
+секреты задаются переменными окружения проекта:
+
+```bash
+npx vercel login
+npx vercel link
+npx vercel env add LLM_API_KEY production   # так же LLM_BASE_URL, LLM_MODEL, EXPLAIN_PASSWORD
+npx vercel deploy --prod
+```
+
+Yahoo Finance иногда отказывает запросам с IP дата-центров, тогда `/api/report` вернёт 502
+с причиной.
+
 ## Источники данных и ограничения
 
 - **Цены и секторы** — Yahoo Finance через `yfinance`: бесплатно, подходит для прототипа,
@@ -102,7 +137,10 @@ src/portfolio_risk/
   report.py         сборка отчёта, текст и JSON
   explain.py        объяснение отчёта через OpenAI-совместимый LLM API
   market_data.py    Yahoo Finance и Ken French
-  cli.py            точка входа
+  cli.py            точка входа CLI
+  web.py            HTTP API веб-версии (FastAPI)
+  static/           страница: HTML, CSS, JS без сборки
+app.py              точка входа веб-версии для Vercel и uvicorn
 ```
 
 Аналитические модули — чистые функции без сети: на входе цены и портфель, на выходе метрики.
@@ -111,7 +149,7 @@ src/portfolio_risk/
 
 ```bash
 uv run pytest
-uv run ruff check src tests && uv run ruff format --check src tests
+uv run ruff check src tests app.py && uv run ruff format --check src tests app.py
 uv run mypy
 ```
 

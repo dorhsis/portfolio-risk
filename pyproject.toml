@@ -6,6 +6,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.162.0",
     "numpy>=2.0",
     "pandas>=2.2",
     "python-dotenv>=1.0",
@@ -18,11 +19,13 @@ portfolio-risk = "portfolio_risk.cli:main"
 
 [dependency-groups]
 dev = [
+    "httpx2>=2.16.0",
     "mypy>=1.13",
     "pandas-stubs>=2.2",
     "pytest>=8.3",
     "ruff>=0.8",
     "types-requests>=2.32",
+    "uvicorn>=0.54.0",
 ]
 
 [build-system]
@@ -44,7 +47,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "N"]
 
 [tool.mypy]
 strict = true
-files = ["src"]
+files = ["src", "app.py"]
 
 [[tool.mypy.overrides]]
 module = ["yfinance.*"]

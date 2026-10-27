@@ -1,23 +1,13 @@
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
-from conftest import synthetic_market
+from conftest import FakeExplainer, FakeLoader
 
 from portfolio_risk.cli import main
 from portfolio_risk.explain import LLMError
 from portfolio_risk.market_data import MarketDataError
 from portfolio_risk.report import MarketData
-
-
-class FakeLoader:
-    def __init__(self) -> None:
-        self.calls: list[tuple[list[str], str, bool]] = []
-
-    def __call__(self, tickers: list[str], benchmark: str, include_factors: bool) -> MarketData:
-        self.calls.append((tickers, benchmark, include_factors))
-        return synthetic_market()
 
 
 def _portfolio(tmp_path: Path) -> Path:
@@ -76,18 +66,6 @@ def test_lookback_must_be_positive(tmp_path: Path) -> None:
         main([str(_portfolio(tmp_path)), "--lookback-years", "0"], loader=FakeLoader())
 
     assert exit_info.value.code == 2
-
-
-class FakeExplainer:
-    def __init__(self, result: str | Exception = "Риск сосредоточен в AAA.") -> None:
-        self.result = result
-        self.reports: list[dict[str, Any]] = []
-
-    def __call__(self, report: dict[str, Any]) -> str:
-        self.reports.append(report)
-        if isinstance(self.result, Exception):
-            raise self.result
-        return self.result
 
 
 def test_explain_flag_appends_explanation_to_text_report(

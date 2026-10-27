@@ -5,11 +5,13 @@ called, so plain `requests` is used instead of a full SDK.
 """
 
 import json
+import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any, Protocol
 
 import requests
+from dotenv import find_dotenv, load_dotenv
 
 SYSTEM_PROMPT = """\
 Ты объясняешь отчёт о риске инвестиционного портфеля частному инвестору простым русским языком.
@@ -40,6 +42,7 @@ class _Response(Protocol):
 
 
 Post = Callable[..., _Response]
+Explainer = Callable[[dict[str, Any]], str]
 
 
 @dataclass(frozen=True)
@@ -120,6 +123,12 @@ def explain(report: Mapping[str, Any], config: LLMConfig, post: Post = requests.
             )
         raise LLMError("LLM API returned an empty answer")
     return str(content).strip()
+
+
+def explain_with_env(report: dict[str, Any]) -> str:
+    """Explain with the LLM configured in the environment or a .env in the working directory."""
+    load_dotenv(find_dotenv(usecwd=True))
+    return explain(report, LLMConfig.from_env(os.environ))
 
 
 def _json_or_empty(response: _Response) -> dict[str, Any]:

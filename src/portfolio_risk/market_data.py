@@ -9,7 +9,7 @@ import logging
 import re
 import warnings
 import zipfile
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 
 import pandas as pd
@@ -25,6 +25,9 @@ _FRENCH_FTP = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp"
 FIVE_FACTORS_URL = f"{_FRENCH_FTP}/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip"
 MOMENTUM_URL = f"{_FRENCH_FTP}/F-F_Momentum_Factor_daily_CSV.zip"
 _DATE_ROW = re.compile(r"^\d{8},")
+
+# (tickers, benchmark, include_factors) -> MarketData; injected so callers can be tested offline.
+Loader = Callable[[list[str], str, bool], MarketData]
 
 
 class MarketDataError(RuntimeError):

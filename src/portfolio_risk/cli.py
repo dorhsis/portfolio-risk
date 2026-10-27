@@ -2,27 +2,15 @@
 
 import argparse
 import json
-import os
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from dotenv import find_dotenv, load_dotenv
-
-from portfolio_risk.explain import LLMConfig, LLMError, explain
-from portfolio_risk.market_data import MarketDataError, load_market_data
+from portfolio_risk.explain import Explainer, LLMError, explain_with_env
+from portfolio_risk.market_data import Loader, MarketDataError, load_market_data
 from portfolio_risk.portfolio import load_portfolio
-from portfolio_risk.report import MarketData, Report, build_report, render_text, report_to_dict
-
-Loader = Callable[[list[str], str, bool], MarketData]
-Explainer = Callable[[dict[str, Any]], str]
-
-
-def explain_with_env(report: dict[str, Any]) -> str:
-    """Explain with the LLM configured in the environment or a .env in the working directory."""
-    load_dotenv(find_dotenv(usecwd=True))
-    return explain(report, LLMConfig.from_env(os.environ))
+from portfolio_risk.report import Report, build_report, render_text, report_to_dict
 
 
 def main(
