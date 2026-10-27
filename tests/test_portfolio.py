@@ -48,6 +48,17 @@ def test_line_without_exactly_ticker_and_shares_is_rejected(line: str) -> None:
         parse_portfolio(f"MSFT 1\n{line}\n")
 
 
+@pytest.mark.parametrize(
+    "text",
+    ["MSFT 1\nXOM 30KSPI , 10\n", "ticker,shares\nXOM 30KSPI,10\n"],
+    ids=["without-header", "with-header"],
+)
+def test_ticker_with_spaces_is_rejected_with_line_number(text: str) -> None:
+    message = "line 2: ticker must not contain spaces, got 'XOM 30KSPI'"
+    with pytest.raises(PortfolioError, match=message):
+        parse_portfolio(text)
+
+
 def test_duplicate_tickers_are_merged() -> None:
     holdings = parse_portfolio("ticker,shares\nAAPL,10\nMSFT,1\naapl,5\n")
 

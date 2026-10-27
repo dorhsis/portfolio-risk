@@ -61,6 +61,11 @@ def parse_portfolio(text: str) -> list[Holding]:
             continue
         if not entry.ticker:
             raise PortfolioError(f"line {entry.line}: ticker is empty")
+        # Caught here, a typo costs an instant error instead of a slow market-data miss.
+        if any(char.isspace() for char in entry.ticker):
+            raise PortfolioError(
+                f"line {entry.line}: ticker must not contain spaces, got '{entry.ticker}'"
+            )
         ticker = entry.ticker.upper()
         shares = _parse_shares(entry.shares, line=entry.line)
         shares_by_ticker[ticker] = shares_by_ticker.get(ticker, 0.0) + shares
