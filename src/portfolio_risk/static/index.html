@@ -40,7 +40,12 @@
             <label class="field__label" for="portfolio">Позиции</label>
             <label class="file-button">
               Загрузить CSV
-              <input id="csv-file" class="visually-hidden" type="file" accept=".csv,text/csv" />
+              <input
+                id="csv-file"
+                class="visually-hidden"
+                type="file"
+                accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
+              />
             </label>
           </div>
           <textarea
@@ -49,22 +54,24 @@
             rows="12"
             spellcheck="false"
             autocomplete="off"
+            autocorrect="off"
+            autocapitalize="characters"
+            placeholder="AAPL 40&#10;MSFT 25"
             aria-describedby="portfolio-hint"
           >
-ticker,shares
-AAPL,40
-MSFT,25
-NVDA,60
-GOOGL,30
-BRK.B,15
-JPM,20
-XOM,30
-QQQ,10
-PLTR,50
-ARM,20</textarea>
+AAPL 40
+MSFT 25
+NVDA 60
+GOOGL 30
+BRK.B 15
+JPM 20
+XOM 30
+QQQ 10
+PLTR 50
+ARM 20</textarea>
           <p id="portfolio-hint" class="hint">
-            CSV с колонками ticker и shares, по строке на бумагу. Акции и ETF США, только длинные
-            позиции, до 50 штук.
+            По строке на бумагу: тикер и число акций через пробел, запятую или точку с запятой.
+            Подойдёт и CSV из Excel. Акции и ETF США, только длинные позиции, до 50 штук.
           </p>
         </div>
 
