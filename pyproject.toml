@@ -3,6 +3,7 @@ name = "portfolio-risk"
 version = "0.1.0"
 description = "Risk analytics for US stock portfolios: concentration, risk contribution, correlations, factor exposure, stress tests"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.0",
