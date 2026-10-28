@@ -63,14 +63,16 @@ class FakeLoader:
 
 
 class FakeExplainer:
-    """Stands in for the LLM: records each report and returns or raises a canned result."""
+    """Stands in for the LLM: records each call, returns or raises a canned result."""
 
     def __init__(self, result: str | Exception = "Риск сосредоточен в AAA.") -> None:
         self.result = result
         self.reports: list[dict[str, Any]] = []
+        self.languages: list[str] = []
 
-    def __call__(self, report: dict[str, Any]) -> str:
+    def __call__(self, report: dict[str, Any], language: str = "ru") -> str:
         self.reports.append(report)
+        self.languages.append(language)
         if isinstance(self.result, Exception):
             raise self.result
         return self.result

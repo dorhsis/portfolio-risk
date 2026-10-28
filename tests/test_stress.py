@@ -75,6 +75,13 @@ def test_benchmark_without_history_cannot_run_the_scenario() -> None:
         run_scenario(SCENARIO, prices, pd.Series({"A": 1.0}), "SPY", pd.Series(dtype=float))
 
 
+def test_historical_scenarios_have_unique_keys_for_translations() -> None:
+    keys = [s.key for s in HISTORICAL_SCENARIOS]
+
+    assert all(keys)
+    assert len(set(keys)) == len(keys)
+
+
 def test_historical_scenarios_are_chronological_and_well_formed() -> None:
     starts = [s.start for s in HISTORICAL_SCENARIOS]
 

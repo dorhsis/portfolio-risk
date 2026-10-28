@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 import requests
 
-from portfolio_risk.explain import LLMConfig, LLMError, build_messages, explain
+from portfolio_risk.explain import SYSTEM_PROMPT, LLMConfig, LLMError, build_messages, explain
 
 API_KEY = "LLM_test_secret_key"
 CONFIG = LLMConfig(api_key=API_KEY, base_url="https://api.example.com/v1/", model="muse-test")
@@ -45,6 +45,22 @@ def test_messages_forbid_recommendations_and_carry_the_report_as_json() -> None:
     assert user["role"] == "user"
     payload = user["content"][user["content"].index("{") :]
     assert json.loads(payload) == REPORT
+
+
+def test_russian_is_the_default_answer_language() -> None:
+    system, _ = build_messages(REPORT)
+
+    assert system["content"] == SYSTEM_PROMPT
+    assert "русским" in SYSTEM_PROMPT
+
+
+def test_english_answer_keeps_the_rules_and_asks_for_english() -> None:
+    system, _ = build_messages(REPORT, language="en")
+
+    assert "Не давай рекомендаций" in system["content"]
+    assert "английским" in system["content"]
+    assert "русским" not in system["content"]
+    assert "in English" in system["content"]
 
 
 def test_config_reads_environment_with_defaults() -> None:
@@ -91,6 +107,14 @@ def test_explain_posts_chat_completion_and_returns_trimmed_text() -> None:
     assert call["json"]["reasoning_effort"] == "low"
     assert call["json"]["max_completion_tokens"] == CONFIG.max_completion_tokens
     assert call["json"]["messages"] == build_messages(REPORT)
+
+
+def test_explain_asks_for_the_requested_language() -> None:
+    post = FakePost(_completion("The portfolio is riskier than the market."))
+
+    explain(REPORT, CONFIG, post=post, language="en")
+
+    assert post.calls[0]["json"]["messages"] == build_messages(REPORT, language="en")
 
 
 def test_http_error_reports_status_and_api_message() -> None:

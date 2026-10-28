@@ -33,6 +33,14 @@ def test_total_value_uses_latest_prices(market: MarketData) -> None:
     assert report.as_of == AS_OF
 
 
+def test_dollar_amounts_become_shares_at_the_latest_price(market: MarketData) -> None:
+    report = build_report([Holding("AAA", amount=5000.0), Holding("BBB", 20)], market)
+
+    aaa = next(p for p in report.positions if p.ticker == "AAA")
+    assert aaa.value == pytest.approx(5000.0)
+    assert aaa.shares == pytest.approx(5000.0 / market.prices["AAA"].iloc[-1])
+
+
 def test_window_spans_the_lookback_when_history_is_long(market: MarketData) -> None:
     report = build_report(OLD_HOLDINGS, market, lookback_years=3)
 
@@ -94,6 +102,12 @@ def test_unmapped_tickers_fall_into_unknown_sector(market: MarketData) -> None:
     report = build_report([*OLD_HOLDINGS, Holding("NEW", 5)], market)
 
     assert set(report.sectors) == {"Technology", "Energy", "Unknown"}
+
+
+def test_report_dict_names_each_stress_scenario_by_a_stable_key(market: MarketData) -> None:
+    payload = report_to_dict(build_report(OLD_HOLDINGS, market))
+
+    assert [t["key"] for t in payload["stress_tests"]] == [s.key for s in HISTORICAL_SCENARIOS]
 
 
 def test_report_dict_is_json_serializable(market: MarketData) -> None:

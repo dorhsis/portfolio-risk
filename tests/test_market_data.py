@@ -4,9 +4,13 @@ import pytest
 
 from portfolio_risk.market_data import (
     MarketDataError,
+    TickerMatch,
     close_prices,
     parse_french_csv,
+    search_query,
+    search_tickers,
     sector_label,
+    ticker_matches,
     to_yahoo_symbol,
 )
 
@@ -125,3 +129,108 @@ def test_load_market_data_survives_factor_download_failure(
     assert market.factors is None
     assert market.factor_error is not None and "dartmouth down" in market.factor_error
     assert market.sectors == {"AAPL": "Technology"}
+
+
+def test_ticker_matches_keep_us_stocks_and_etfs_under_portfolio_symbols() -> None:
+    quotes = [
+        {
+            "symbol": "AAPL",
+            "longname": "Apple Inc.",
+            "quoteType": "EQUITY",
+            "exchange": "NMS",
+            "exchDisp": "NASDAQ",
+        },
+        {
+            "symbol": "SAAPL=F",
+            "shortname": "Apple Futures",
+            "quoteType": "FUTURE",
+            "exchange": "CME",
+            "exchDisp": "Chicago Mercantile Exchange",
+        },
+        {
+            "symbol": "AAPL.TO",
+            "longname": "Apple Inc.",
+            "quoteType": "EQUITY",
+            "exchange": "TOR",
+            "exchDisp": "Toronto",
+        },
+        {
+            "symbol": "BRK-B",
+            "shortname": "Berkshire Hathaway Inc.",
+            "longname": None,
+            "quoteType": "EQUITY",
+            "exchange": "NYQ",
+            "exchDisp": "NYSE",
+        },
+        {
+            "symbol": "VXUS",
+            "longname": "Vanguard Total International Stock ETF",
+            "quoteType": "ETF",
+            "exchange": "NGM",
+            "exchDisp": "NASDAQ",
+        },
+        {
+            "symbol": "VTSAX",
+            "longname": "Vanguard Total Stock Mkt Idx Adm",
+            "quoteType": "MUTUALFUND",
+            "exchange": "NAS",
+            "exchDisp": "Nasdaq",
+        },
+        {
+            "symbol": "AAPL",
+            "longname": "Apple Inc.",
+            "quoteType": "EQUITY",
+            "exchange": "NMS",
+            "exchDisp": "NASDAQ",
+        },
+    ]
+
+    assert ticker_matches(quotes) == [
+        TickerMatch("AAPL", "Apple Inc.", "NASDAQ", "stock"),
+        TickerMatch("BRK.B", "Berkshire Hathaway Inc.", "NYSE", "stock"),
+        TickerMatch("VXUS", "Vanguard Total International Stock ETF", "NASDAQ", "etf"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("BRK.B", "BRK-B"),
+        ("bf.b", "bf-b"),
+        ("apple", "apple"),
+        ("amazon.com", "amazon.com"),
+        ("kaspi.kz", "kaspi.kz"),
+    ],
+)
+def test_search_query_spells_share_classes_the_yahoo_way(query: str, expected: str) -> None:
+    assert search_query(query) == expected
+
+
+def test_search_tickers_turns_any_yahoo_failure_into_market_data_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import portfolio_risk.market_data as md
+
+    def failing_search(query: str, **kwargs: object) -> None:
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(md.yf, "Search", failing_search)
+
+    with pytest.raises(MarketDataError, match="timed out"):
+        search_tickers("apple")
+
+
+def test_search_tickers_reports_an_answer_without_quotes_as_a_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import portfolio_risk.market_data as md
+
+    class ThrottledSearch:
+        def __init__(self, query: str, **kwargs: object) -> None:
+            self.response = {"finance": {"error": {"code": "Too Many Requests"}}}
+            self.quotes: list[dict[str, object]] = []
+
+    monkeypatch.setattr(md.yf, "Search", ThrottledSearch)
+
+    with pytest.raises(MarketDataError, match="no quote list"):
+        search_tickers("apple")

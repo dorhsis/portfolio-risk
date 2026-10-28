@@ -13,8 +13,10 @@ from typing import Any, Protocol
 import requests
 from dotenv import find_dotenv, load_dotenv
 
-SYSTEM_PROMPT = """\
-Ты объясняешь отчёт о риске инвестиционного портфеля частному инвестору простым русским языком.
+# The rules stay in Russian whatever the answer language, so every language is held to the same
+# rules; only the language of the answer changes.
+_PROMPT = """\
+Ты объясняешь отчёт о риске инвестиционного портфеля частному инвестору простым {language} языком.
 
 Правила:
 - Используй только цифры из JSON-отчёта. Ничего не пересчитывай и не придумывай, можно только \
@@ -29,6 +31,8 @@ SYSTEM_PROMPT = """\
 proxied_by_beta, предупреди, что для этих бумаг это оценка.
 - Если факторы доступны, назови самые заметные перекосы; если нет — не упоминай их.
 - 5–7 предложений, без заголовков, списков и markdown."""
+LANGUAGES = {"ru": "русским", "en": "английским"}
+SYSTEM_PROMPT = _PROMPT.format(language=LANGUAGES["ru"])
 
 
 class LLMError(RuntimeError):
@@ -43,6 +47,8 @@ class _Response(Protocol):
 
 Post = Callable[..., _Response]
 Explainer = Callable[[dict[str, Any]], str]
+# (report, answer language) -> explanation
+LocalizedExplainer = Callable[[dict[str, Any], str], str]
 
 
 @dataclass(frozen=True)
@@ -80,22 +86,34 @@ def _positive_int(raw: str) -> int:
     return value
 
 
-def build_messages(report: Mapping[str, Any]) -> list[dict[str, str]]:
+def system_prompt(language: str = "ru") -> str:
+    prompt = _PROMPT.format(language=LANGUAGES[language])
+    if language == "en":
+        prompt += "\n- Write the whole answer in English."
+    return prompt
+
+
+def build_messages(report: Mapping[str, Any], language: str = "ru") -> list[dict[str, str]]:
     report_json = json.dumps(report, ensure_ascii=False, indent=2)
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt(language)},
         {"role": "user", "content": f"Отчёт по портфелю:\n{report_json}"},
     ]
 
 
-def explain(report: Mapping[str, Any], config: LLMConfig, post: Post = requests.post) -> str:
+def explain(
+    report: Mapping[str, Any],
+    config: LLMConfig,
+    post: Post = requests.post,
+    language: str = "ru",
+) -> str:
     try:
         response = post(
             f"{config.base_url.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {config.api_key}"},
             json={
                 "model": config.model,
-                "messages": build_messages(report),
+                "messages": build_messages(report, language),
                 "reasoning_effort": config.reasoning_effort,
                 "max_completion_tokens": config.max_completion_tokens,
             },
@@ -125,10 +143,10 @@ def explain(report: Mapping[str, Any], config: LLMConfig, post: Post = requests.
     return str(content).strip()
 
 
-def explain_with_env(report: dict[str, Any]) -> str:
+def explain_with_env(report: dict[str, Any], language: str = "ru") -> str:
     """Explain with the LLM configured in the environment or a .env in the working directory."""
     load_dotenv(find_dotenv(usecwd=True))
-    return explain(report, LLMConfig.from_env(os.environ))
+    return explain(report, LLMConfig.from_env(os.environ), language=language)
 
 
 def _json_or_empty(response: _Response) -> dict[str, Any]:

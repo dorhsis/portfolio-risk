@@ -59,6 +59,36 @@ def test_ticker_with_spaces_is_rejected_with_line_number(text: str) -> None:
         parse_portfolio(text)
 
 
+@pytest.mark.parametrize(
+    "text",
+    ["AAPL $5000\n", "AAPL 5000$\n", "ticker,shares\nAAPL,$5000\n", "AAPL;$ 5000\n"],
+    ids=["prefix", "suffix", "header", "spaced"],
+)
+def test_dollar_amount_can_replace_the_share_count(text: str) -> None:
+    assert parse_portfolio(text) == [Holding("AAPL", amount=5000.0)]
+
+
+def test_shares_and_dollar_amounts_of_one_ticker_are_merged() -> None:
+    assert parse_portfolio("AAPL 10\naapl $500.50\n") == [Holding("AAPL", 10.0, 500.5)]
+
+
+@pytest.mark.parametrize(
+    ("amount", "message"),
+    [
+        ("$lots", "amount must be a number, got '\\$lots'"),
+        ("$0", "amount must be positive"),
+        ("$inf", "amount must be finite"),
+    ],
+)
+def test_invalid_dollar_amount_reports_line_number(amount: str, message: str) -> None:
+    with pytest.raises(PortfolioError, match=f"line 2: {message}"):
+        parse_portfolio(f"MSFT 1\nAAPL {amount}\n")
+
+
+def test_holding_turns_its_dollar_amount_into_shares_at_a_price() -> None:
+    assert Holding("AAPL", shares=2.0, amount=300.0).shares_at(150.0) == pytest.approx(4.0)
+
+
 def test_duplicate_tickers_are_merged() -> None:
     holdings = parse_portfolio("ticker,shares\nAAPL,10\nMSFT,1\naapl,5\n")
 

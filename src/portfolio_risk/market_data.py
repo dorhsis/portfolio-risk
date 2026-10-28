@@ -11,6 +11,7 @@ import warnings
 import zipfile
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
+from typing import Any, Literal, NamedTuple
 
 import pandas as pd
 import requests
@@ -28,6 +29,22 @@ _DATE_ROW = re.compile(r"^\d{8},")
 
 # (tickers, benchmark, include_factors) -> MarketData; injected so callers can be tested offline.
 Loader = Callable[[list[str], str, bool], MarketData]
+
+# Yahoo exchange codes of US venues: Nasdaq tiers, NYSE, NYSE American, NYSE Arca, Cboe BZX.
+US_EXCHANGES = frozenset({"NMS", "NGM", "NCM", "NYQ", "ASE", "PCX", "BTS"})
+QUOTE_KINDS: dict[str, Literal["stock", "etf"]] = {"EQUITY": "stock", "ETF": "etf"}
+_SHARE_CLASS = re.compile(r"[A-Za-z]{1,5}\.[A-Za-z]")
+
+
+class TickerMatch(NamedTuple):
+    symbol: str
+    name: str
+    exchange: str
+    kind: Literal["stock", "etf"]
+
+
+# query -> matches; injected so the web API can be tested offline.
+Searcher = Callable[[str], list[TickerMatch]]
 
 
 class MarketDataError(RuntimeError):
@@ -53,6 +70,10 @@ def to_yahoo_symbol(ticker: str) -> str:
     return ticker.replace(".", "-")
 
 
+def from_yahoo_symbol(symbol: str) -> str:
+    return symbol.replace("-", ".")
+
+
 def fetch_prices(tickers: Sequence[str], start: pd.Timestamp) -> pd.DataFrame:
     """Split- and dividend-adjusted daily closes, one column per ticker."""
     symbols = [to_yahoo_symbol(t) for t in tickers]
@@ -76,6 +97,37 @@ def close_prices(raw: pd.DataFrame, tickers: Sequence[str]) -> pd.DataFrame:
     prices = closes[list(ticker_by_symbol)].rename(columns=ticker_by_symbol)
     prices.columns.name = None
     return prices
+
+
+def search_tickers(query: str) -> list[TickerMatch]:
+    """US stocks and ETFs whose ticker or name matches the query, best match first."""
+    try:
+        with _quiet_yfinance():
+            search = yf.Search(search_query(query), max_results=10, news_count=0, timeout=8)
+    except Exception as error:  # yfinance raises transport and parsing errors of many types
+        raise MarketDataError(f"Yahoo search failed: {error}") from None
+    # A throttled or failed answer still parses, so tell it from "nothing matched" here.
+    if "quotes" not in search.response:
+        raise MarketDataError("Yahoo search answered with no quote list")
+    return ticker_matches(search.quotes)
+
+
+def search_query(query: str) -> str:
+    """Share classes are BRK.B in a portfolio but BRK-B on Yahoo, which finds only the latter."""
+    return to_yahoo_symbol(query) if _SHARE_CLASS.fullmatch(query) else query
+
+
+def ticker_matches(quotes: Sequence[Mapping[str, Any]]) -> list[TickerMatch]:
+    matches: dict[str, TickerMatch] = {}
+    for quote in quotes:
+        kind = QUOTE_KINDS.get(str(quote.get("quoteType")))
+        if kind is None or quote.get("exchange") not in US_EXCHANGES:
+            continue
+        symbol = from_yahoo_symbol(str(quote["symbol"]))
+        name = quote.get("longname") or quote.get("shortname") or symbol
+        exchange = quote.get("exchDisp") or quote["exchange"]
+        matches.setdefault(symbol, TickerMatch(symbol, str(name), str(exchange), kind))
+    return list(matches.values())
 
 
 def fetch_sectors(tickers: Sequence[str]) -> dict[str, str]:

@@ -1,8 +1,10 @@
-"""Portfolio input: one holding per line, a ticker and a number of shares, long positions only.
+"""Portfolio input: one holding per line, a ticker and a quantity, long positions only.
 
-The `ticker,shares` header is optional; with it, column order is free and extra columns are
-ignored. Values may be separated by commas, semicolons, tabs or spaces, so a CSV export, a paste
-from a spreadsheet and a hand-typed `AAPL 40` all work.
+The quantity is a number of shares (`AAPL 40`) or a dollar amount (`AAPL $5000`); amounts become
+shares at the latest price when the report is built. The `ticker,shares` header is optional;
+with it, column order is free and extra columns are ignored. Values may be separated by commas,
+semicolons, tabs or spaces, so a CSV export, a paste from a spreadsheet and a hand-typed line
+all work.
 """
 
 import csv
@@ -23,7 +25,11 @@ class PortfolioError(ValueError):
 @dataclass(frozen=True)
 class Holding:
     ticker: str
-    shares: float
+    shares: float = 0.0
+    amount: float = 0.0
+
+    def shares_at(self, price: float) -> float:
+        return self.shares + self.amount / price
 
 
 class _Line(NamedTuple):
@@ -55,7 +61,7 @@ def parse_portfolio(text: str) -> list[Holding]:
     else:
         entries = [_entry_without_header(line) for line in lines]
 
-    shares_by_ticker: dict[str, float] = {}
+    quantities: dict[str, tuple[float, float]] = {}
     for entry in entries:
         if not entry.ticker and not entry.shares:
             continue
@@ -67,12 +73,13 @@ def parse_portfolio(text: str) -> list[Holding]:
                 f"line {entry.line}: ticker must not contain spaces, got '{entry.ticker}'"
             )
         ticker = entry.ticker.upper()
-        shares = _parse_shares(entry.shares, line=entry.line)
-        shares_by_ticker[ticker] = shares_by_ticker.get(ticker, 0.0) + shares
+        shares, amount = _parse_quantity(entry.shares, line=entry.line)
+        known_shares, known_amount = quantities.get(ticker, (0.0, 0.0))
+        quantities[ticker] = (known_shares + shares, known_amount + amount)
 
-    if not shares_by_ticker:
+    if not quantities:
         raise PortfolioError("portfolio has no holdings")
-    return [Holding(ticker, shares) for ticker, shares in shares_by_ticker.items()]
+    return [Holding(ticker, shares, amount) for ticker, (shares, amount) in quantities.items()]
 
 
 def _split(line: str) -> list[str]:
@@ -109,13 +116,20 @@ def _cell(cells: list[str], index: int) -> str:
     return cells[index] if index < len(cells) else ""
 
 
-def _parse_shares(raw: str, line: int) -> float:
+def _parse_quantity(raw: str, line: int) -> tuple[float, float]:
+    """(shares, dollar amount): a `$` before or after the number makes it an amount."""
+    if raw.startswith("$") or raw.endswith("$"):
+        return 0.0, _positive_number(raw.strip("$").strip(), "amount", raw, line)
+    return _positive_number(raw, "shares", raw, line), 0.0
+
+
+def _positive_number(text: str, name: str, raw: str, line: int) -> float:
     try:
-        shares = float(raw)
+        value = float(text)
     except ValueError:
-        raise PortfolioError(f"line {line}: shares must be a number, got '{raw}'") from None
-    if not math.isfinite(shares):
-        raise PortfolioError(f"line {line}: shares must be finite, got {raw}")
-    if shares <= 0:
-        raise PortfolioError(f"line {line}: shares must be positive, got {raw}")
-    return shares
+        raise PortfolioError(f"line {line}: {name} must be a number, got '{raw}'") from None
+    if not math.isfinite(value):
+        raise PortfolioError(f"line {line}: {name} must be finite, got {raw}")
+    if value <= 0:
+        raise PortfolioError(f"line {line}: {name} must be positive, got {raw}")
+    return value

@@ -18,6 +18,8 @@ class Scenario:
     name: str
     start: pd.Timestamp
     end: pd.Timestamp
+    # Stable id for consumers that show the scenario in another language.
+    key: str = ""
 
 
 @dataclass(frozen=True)
@@ -30,10 +32,12 @@ class ScenarioResult:
 
 # S&P 500 peak-to-trough windows.
 HISTORICAL_SCENARIOS = (
-    Scenario("Крах доткомов", pd.Timestamp("2000-03-24"), pd.Timestamp("2002-10-09")),
-    Scenario("Мировой финансовый кризис", pd.Timestamp("2007-10-09"), pd.Timestamp("2009-03-09")),
-    Scenario("COVID-обвал", pd.Timestamp("2020-02-19"), pd.Timestamp("2020-03-23")),
-    Scenario("Рост ставок 2022", pd.Timestamp("2022-01-03"), pd.Timestamp("2022-10-12")),
+    Scenario("Крах доткомов", pd.Timestamp("2000-03-24"), pd.Timestamp("2002-10-09"), "dotcom"),
+    Scenario(
+        "Мировой финансовый кризис", pd.Timestamp("2007-10-09"), pd.Timestamp("2009-03-09"), "gfc"
+    ),
+    Scenario("COVID-обвал", pd.Timestamp("2020-02-19"), pd.Timestamp("2020-03-23"), "covid"),
+    Scenario("Рост ставок 2022", pd.Timestamp("2022-01-03"), pd.Timestamp("2022-10-12"), "rates"),
 )
 
 

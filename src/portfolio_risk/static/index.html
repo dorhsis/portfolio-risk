@@ -20,10 +20,10 @@
       href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <link rel="stylesheet" href="styles.css" />
-    <script src="app.js" defer></script>
+    <script type="module" src="app.js"></script>
   </head>
   <body>
-    <a class="skip-link" href="#report">Перейти к отчёту</a>
+    <a class="skip-link" href="#report" data-i18n="skip">Перейти к отчёту</a>
 
     <header class="appbar">
       <div class="appbar__inner">
@@ -32,151 +32,181 @@
             <rect class="brand__yard" x="2" y="4" width="10" height="5" rx="1.5" />
             <rect class="brand__risk" x="2" y="11" width="16" height="5" rx="1.5" />
           </svg>
-          Риск портфеля
+          <span data-i18n="brand">Риск портфеля</span>
         </a>
-        <a class="appbar__link" href="https://github.com/dorhsis/portfolio-risk">
-          Исходный код
-          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M5.5 4.5h6v6M11.5 4.5l-7 7" />
-          </svg>
-        </a>
+        <div class="appbar__end">
+          <div class="segmented segmented--small" role="radiogroup" aria-label="Язык · Language">
+            <label class="segmented__option">
+              <input type="radio" name="language" value="ru" lang="ru" aria-label="Русский" />
+              <span aria-hidden="true">RU</span>
+            </label>
+            <label class="segmented__option">
+              <input type="radio" name="language" value="en" lang="en" aria-label="English" />
+              <span aria-hidden="true">EN</span>
+            </label>
+          </div>
+          <a class="appbar__link" href="https://github.com/dorhsis/portfolio-risk">
+            <span data-i18n="appbar.source">Исходный код</span>
+            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M5.5 4.5h6v6M11.5 4.5l-7 7" />
+            </svg>
+          </a>
+        </div>
       </div>
     </header>
 
     <main class="page">
       <div class="page__head">
-        <h1 class="page__title">Где живёт риск вашего портфеля</h1>
-        <p class="page__lede">
-          Вставьте позиции, и мы покажем, какие бумаги дают риск сверх своего веса и сколько
-          портфель потерял бы в кризисы 2000, 2008, 2020 и 2022 годов. Без советов, что купить.
+        <h1 class="page__title" data-i18n="page.title">Где живёт риск вашего портфеля</h1>
+        <p class="page__lede" data-i18n="page.lede">
+          Добавьте бумаги, и мы покажем, какие из них дают риск сверх своего веса и сколько портфель
+          потерял бы в кризисы 2000, 2008, 2020 и 2022 годов. Без советов, что купить.
         </p>
       </div>
 
       <div class="layout">
         <form id="portfolio-form" class="card portfolio-form" aria-labelledby="portfolio-title" novalidate>
-          <div class="card__head">
-            <h2 id="portfolio-title" class="card__title">Портфель</h2>
-            <label class="button button--secondary button--small">
-              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M8 10.5v-8M4.75 5.75 8 2.5l3.25 3.25M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" />
-              </svg>
-              Загрузить файл
-              <input
-                id="csv-file"
-                class="visually-hidden"
-                type="file"
-                accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
-              />
-            </label>
-          </div>
+          <div class="portfolio-form__body">
+            <div class="card__head">
+              <h2 id="portfolio-title" class="card__title" data-i18n="form.title">Портфель</h2>
+              <label class="button button--secondary button--small">
+                <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M8 10.5v-8M4.75 5.75 8 2.5l3.25 3.25M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" />
+                </svg>
+                <span data-i18n="form.upload">Загрузить файл</span>
+                <input
+                  id="csv-file"
+                  class="visually-hidden"
+                  type="file"
+                  accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
+                />
+              </label>
+            </div>
 
-          <div class="field">
-            <label class="field__label" for="portfolio">Позиции</label>
-            <textarea
-              id="portfolio"
-              class="input input--code"
-              rows="10"
-              spellcheck="false"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="characters"
-              placeholder="AAPL 40&#10;MSFT 25"
-              aria-describedby="portfolio-hint"
-            >
-AAPL 40
-MSFT 25
-NVDA 60
-GOOGL 30
-BRK.B 15
-JPM 20
-XOM 30
-QQQ 10
-PLTR 50
-ARM 20</textarea>
-            <p id="portfolio-hint" class="hint">
-              По строке на бумагу: тикер и число акций через пробел, запятую или точку с запятой.
-              Подойдёт и CSV из Excel. Акции и ETF США, только длинные позиции, до 50 штук.
+            <div class="editor">
+              <div class="editor__columns" aria-hidden="true">
+                <span data-i18n="editor.colSecurity">Бумага</span>
+                <span data-i18n="editor.colQuantity">Количество</span>
+              </div>
+              <ol id="holdings" class="holdings" aria-labelledby="portfolio-title"></ol>
+              <div class="editor__actions">
+                <button id="add-row" class="button button--ghost button--small" type="button">
+                  <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" /></svg>
+                  <span data-i18n="editor.add">Добавить бумагу</span>
+                </button>
+                <button id="clear-rows" class="button button--ghost button--small" type="button" data-i18n="editor.clear">
+                  Очистить
+                </button>
+              </div>
+              <p id="editor-notice" class="editor__notice" hidden>
+                <span id="editor-notice-text"></span>
+                <button id="undo" class="link-button" type="button" data-i18n="editor.undo">Вернуть как было</button>
+              </p>
+              <p id="editor-error" class="editor__error" role="alert" hidden></p>
+              <p class="hint" data-i18n="editor.hint">
+                Ищите по тикеру или названию компании, количество — в акциях или долларах. Список из
+                Excel можно вставить в любое поле или перетащить файл на эту карточку.
+              </p>
+              <div class="presets">
+                <span class="presets__label" data-i18n="preset.label">Примеры</span>
+                <button class="chip-button" type="button" data-preset="example" data-i18n="preset.example">Смешанный</button>
+                <button class="chip-button" type="button" data-preset="tech" data-i18n="preset.tech">Технологии</button>
+                <button class="chip-button" type="button" data-preset="broad" data-i18n="preset.broad">Весь рынок</button>
+                <button class="chip-button" type="button" data-preset="dividends" data-i18n="preset.dividends">Дивиденды</button>
+              </div>
+              <p id="editor-live" class="visually-hidden" role="status" aria-live="polite"></p>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="benchmark" data-i18n="form.benchmark">Бенчмарк</label>
+              <input
+                id="benchmark"
+                class="input input--code"
+                value="SPY"
+                maxlength="10"
+                autocapitalize="characters"
+                spellcheck="false"
+                autocomplete="off"
+              />
+            </div>
+
+            <fieldset class="field">
+              <legend class="field__label" data-i18n="form.lookback">Окно оценки</legend>
+              <div class="segmented">
+                <label class="segmented__option">
+                  <input type="radio" name="lookback" value="1" />
+                  <span data-i18n="form.years1">1 год</span>
+                </label>
+                <label class="segmented__option">
+                  <input type="radio" name="lookback" value="3" checked />
+                  <span data-i18n="form.years3">3 года</span>
+                </label>
+                <label class="segmented__option">
+                  <input type="radio" name="lookback" value="5" />
+                  <span data-i18n="form.years5">5 лет</span>
+                </label>
+                <label class="segmented__option">
+                  <input type="radio" name="lookback" value="10" />
+                  <span data-i18n="form.years10">10 лет</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <label class="switch">
+              <span>
+                <span data-i18n="form.factors">Факторы Fama–French</span>
+                <span class="switch__hint" data-i18n="form.factorsHint">
+                  Рынок, размер, value, прибыльность, инвестиции, моментум
+                </span>
+              </span>
+              <input id="factors" class="switch__input" type="checkbox" role="switch" checked />
+              <span class="switch__track" aria-hidden="true"></span>
+            </label>
+
+            <button id="submit" class="button button--primary" type="submit" data-i18n="form.submit">
+              Посчитать риск
+            </button>
+            <p class="status" role="status" aria-live="polite">
+              <span id="status-text"></span>
+              <span id="status-clock" class="status__clock" aria-hidden="true"></span>
             </p>
           </div>
 
-          <div class="field">
-            <label class="field__label" for="benchmark">Бенчмарк</label>
-            <input
-              id="benchmark"
-              class="input input--code"
-              value="SPY"
-              maxlength="10"
-              autocapitalize="characters"
-              spellcheck="false"
-              autocomplete="off"
-            />
+          <div class="dropzone" aria-hidden="true">
+            <svg class="dropzone__icon" viewBox="0 0 16 16">
+              <path d="M8 10.5v-8M4.75 5.75 8 2.5l3.25 3.25M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" />
+            </svg>
+            <span data-i18n="editor.drop">Отпустите файл, чтобы загрузить позиции</span>
           </div>
-
-          <fieldset class="field">
-            <legend class="field__label">Окно оценки</legend>
-            <div class="segmented">
-              <label class="segmented__option">
-                <input type="radio" name="lookback" value="1" />
-                <span>1 год</span>
-              </label>
-              <label class="segmented__option">
-                <input type="radio" name="lookback" value="3" checked />
-                <span>3 года</span>
-              </label>
-              <label class="segmented__option">
-                <input type="radio" name="lookback" value="5" />
-                <span>5 лет</span>
-              </label>
-              <label class="segmented__option">
-                <input type="radio" name="lookback" value="10" />
-                <span>10 лет</span>
-              </label>
-            </div>
-          </fieldset>
-
-          <label class="switch">
-            <span>
-              Факторы Fama–French
-              <span class="switch__hint">Рынок, размер, value, прибыльность, инвестиции, моментум</span>
-            </span>
-            <input id="factors" class="switch__input" type="checkbox" role="switch" checked />
-            <span class="switch__track" aria-hidden="true"></span>
-          </label>
-
-          <button id="submit" class="button button--primary" type="submit">Посчитать риск</button>
-          <p class="status" role="status" aria-live="polite">
-            <span id="status-text"></span>
-            <span id="status-clock" class="status__clock" aria-hidden="true"></span>
-          </p>
         </form>
 
-        <section id="report" class="report" aria-label="Отчёт" tabindex="-1">
+        <section id="report" class="report" data-i18n-label="report.label" aria-label="Отчёт" tabindex="-1">
           <div id="empty" class="card">
-            <h2 class="card__title">Отчёт появится здесь</h2>
-            <p class="empty__text">
+            <h2 class="card__title" data-i18n="empty.title">Отчёт появится здесь</h2>
+            <p class="empty__text" data-i18n="empty.text">
               В форме уже лежит пример портфеля из десяти бумаг. Нажмите «Посчитать риск», чтобы
-              посмотреть отчёт, или замените позиции своими.
+              посмотреть отчёт, или замените бумаги своими.
             </p>
             <ul class="empty__list">
               <li>
-                <span class="empty__item">Вес против риска</span>
-                какие бумаги раскачивают портфель сильнее, чем весят
+                <span class="empty__item" data-i18n="empty.weightRisk">Вес против риска</span>
+                <span data-i18n="empty.weightRiskText">какие бумаги раскачивают портфель сильнее, чем весят</span>
               </li>
               <li>
-                <span class="empty__item">Кризисы 2000, 2008, 2020 и 2022</span>
-                сколько портфель потерял бы в процентах и в долларах
+                <span class="empty__item" data-i18n="empty.stress">Кризисы 2000, 2008, 2020 и 2022</span>
+                <span data-i18n="empty.stressText">сколько портфель потерял бы в процентах и в долларах</span>
               </li>
               <li>
-                <span class="empty__item">Концентрация</span>
-                эффективное число позиций, секторы и корреляции
+                <span class="empty__item" data-i18n="empty.structure">Концентрация</span>
+                <span data-i18n="empty.structureText">эффективное число позиций, секторы и корреляции</span>
               </li>
               <li>
-                <span class="empty__item">Факторный профиль</span>
-                наклон к рынку, размеру, value и моментуму
+                <span class="empty__item" data-i18n="empty.factors">Факторный профиль</span>
+                <span data-i18n="empty.factorsText">наклон к рынку, размеру, value и моментуму</span>
               </li>
               <li>
-                <span class="empty__item">Объяснение простым языком</span>
-                пересказ отчёта языковой моделью, по паролю
+                <span class="empty__item" data-i18n="empty.explain">Объяснение простым языком</span>
+                <span data-i18n="empty.explainText">пересказ отчёта языковой моделью, по паролю</span>
               </li>
             </ul>
           </div>
@@ -207,37 +237,34 @@ ARM 20</textarea>
               <path d="M10 6.25v4.5M10 13.5v.25" />
             </svg>
             <div>
-              <p class="notice__title">Не удалось посчитать риск</p>
+              <p class="notice__title" data-i18n="error.title">Не удалось посчитать риск</p>
               <p id="error-detail" class="notice__detail"></p>
               <p id="error-hint" class="notice__hint"></p>
             </div>
           </div>
 
           <div id="result" class="result" hidden>
-            <nav id="report-nav" class="report-nav" aria-label="Разделы отчёта"></nav>
+            <nav id="report-nav" class="report-nav" data-i18n-label="nav.label" aria-label="Разделы отчёта"></nav>
 
             <div id="report-head" class="result__group"></div>
 
-            <section
-              id="explain"
-              class="card explain"
-              aria-labelledby="explain-title"
-              data-nav="Объяснение"
-            >
+            <section id="explain" class="card explain" aria-labelledby="explain-title">
               <div class="card__head">
-                <h2 id="explain-title" class="card__title">Объяснение простым языком</h2>
-                <span class="badge">Нужен пароль</span>
+                <h2 id="explain-title" class="card__title" data-i18n="explain.title">Объяснение простым языком</h2>
+                <span class="badge" data-i18n="explain.badge">Нужен пароль</span>
               </div>
-              <p class="section-lede">
+              <p class="section-lede" data-i18n="explain.lede">
                 Языковая модель пересказывает цифры этого отчёта и не даёт советов. Пароль знает
                 владелец сайта.
               </p>
               <form id="explain-form" class="explain__form">
                 <div class="field explain__field">
-                  <label class="field__label" for="password">Пароль</label>
+                  <label class="field__label" for="password" data-i18n="explain.password">Пароль</label>
                   <input id="password" class="input" type="password" autocomplete="current-password" />
                 </div>
-                <button id="explain-submit" class="button button--secondary" type="submit">Объяснить</button>
+                <button id="explain-submit" class="button button--secondary" type="submit" data-i18n="explain.submit">
+                  Объяснить
+                </button>
               </form>
               <p class="status" role="status" aria-live="polite">
                 <span id="explain-status-text"></span>
@@ -254,12 +281,12 @@ ARM 20</textarea>
     </main>
 
     <footer class="footer">
-      <p>
+      <p data-i18n="footer.text">
         Не инвестиционная рекомендация: отчёт описывает риск, а не то, что с ним делать. Котировки и
         секторы — Yahoo Finance (только для некоммерческого использования), факторы — Kenneth French
         Data Library, они обновляются с задержкой около двух месяцев.
       </p>
-      <a href="https://github.com/dorhsis/portfolio-risk">Исходный код на GitHub</a>
+      <a href="https://github.com/dorhsis/portfolio-risk" data-i18n="footer.source">Исходный код на GitHub</a>
     </footer>
   </body>
 </html>

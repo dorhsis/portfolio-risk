@@ -1,24 +1,34 @@
 """HTTP API behind the web page: the CLI's JSON report plus a password-gated LLM explanation.
 
+Two helpers serve the portfolio editor: /api/parse turns a pasted list or file into holdings with
+the same parser the report uses, and /api/search looks tickers up by symbol or company name.
+
 The explanation spends the owner's LLM quota, so it stays off until EXPLAIN_PASSWORD is set on the
 server and every call must present it.
 """
 
+import dataclasses
 import hmac
 import json
 import os
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
-from portfolio_risk.explain import Explainer, LLMError, explain_with_env
-from portfolio_risk.market_data import Loader, MarketDataError, load_market_data
-from portfolio_risk.portfolio import parse_portfolio
+from portfolio_risk.explain import LLMError, LocalizedExplainer, explain_with_env
+from portfolio_risk.market_data import (
+    Loader,
+    MarketDataError,
+    Searcher,
+    load_market_data,
+    search_tickers,
+)
+from portfolio_risk.portfolio import Holding, parse_portfolio
 from portfolio_risk.report import build_report, report_to_dict
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -27,10 +37,14 @@ MAX_HOLDINGS = 50
 MAX_PORTFOLIO_CHARS = 20_000
 # A real report is a few kilobytes; the cap stops the endpoint relaying arbitrary text to the LLM.
 MAX_REPORT_CHARS = 50_000
+MAX_QUERY_CHARS = 60
 
 
-class ReportRequest(BaseModel):
+class ParseRequest(BaseModel):
     portfolio: str = Field(max_length=MAX_PORTFOLIO_CHARS)
+
+
+class ReportRequest(ParseRequest):
     benchmark: str = Field(default="SPY", pattern=r"^[A-Za-z][A-Za-z.\-]{0,9}$")
     lookback_years: int = Field(default=3, ge=1, le=25)
     factors: bool = True
@@ -39,6 +53,7 @@ class ReportRequest(BaseModel):
 class ExplainRequest(BaseModel):
     report: dict[str, Any]
     password: str = Field(max_length=200)
+    language: Literal["ru", "en"] = "ru"
 
     @field_validator("report")
     @classmethod
@@ -48,10 +63,18 @@ class ExplainRequest(BaseModel):
         return report
 
 
+def parse_holdings(text: str) -> list[Holding]:
+    holdings = parse_portfolio(text)
+    if len(holdings) > MAX_HOLDINGS:
+        raise ValueError(f"at most {MAX_HOLDINGS} holdings allowed, got {len(holdings)}")
+    return holdings
+
+
 def create_app(
     loader: Loader = load_market_data,
-    explainer: Explainer = explain_with_env,
+    explainer: LocalizedExplainer = explain_with_env,
     env: Mapping[str, str] = os.environ,
+    searcher: Searcher = search_tickers,
 ) -> FastAPI:
     app = FastAPI(title="Portfolio Risk", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -64,12 +87,31 @@ def create_app(
         detail = f"{field}: {first['msg']}" if field else str(first["msg"])
         return JSONResponse(status_code=422, content={"detail": detail})
 
+    @app.post("/api/parse")
+    def parse(request: ParseRequest) -> dict[str, list[dict[str, Any]]]:
+        try:
+            holdings = parse_holdings(request.portfolio)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from None
+        return {"holdings": [dataclasses.asdict(h) for h in holdings]}
+
+    @app.get("/api/search")
+    def search(
+        q: Annotated[str, Query(max_length=MAX_QUERY_CHARS)],
+    ) -> dict[str, list[dict[str, str]]]:
+        query = q.strip()
+        if not query:
+            raise HTTPException(status_code=422, detail="q: search query is empty")
+        try:
+            matches = searcher(query)
+        except MarketDataError as error:
+            raise HTTPException(status_code=502, detail=str(error)) from None
+        return {"results": [match._asdict() for match in matches]}
+
     @app.post("/api/report")
     def report(request: ReportRequest) -> dict[str, Any]:
         try:
-            holdings = parse_portfolio(request.portfolio)
-            if len(holdings) > MAX_HOLDINGS:
-                raise ValueError(f"at most {MAX_HOLDINGS} holdings allowed, got {len(holdings)}")
+            holdings = parse_holdings(request.portfolio)
             benchmark = request.benchmark.upper()
             market = loader([h.ticker for h in holdings], benchmark, request.factors)
             return report_to_dict(build_report(holdings, market, benchmark, request.lookback_years))
@@ -88,7 +130,7 @@ def create_app(
         if not hmac.compare_digest(request.password.encode(), expected.encode()):
             raise HTTPException(status_code=401, detail="wrong password")
         try:
-            return {"explanation": explainer(request.report)}
+            return {"explanation": explainer(request.report, request.language)}
         except LLMError as error:
             raise HTTPException(status_code=502, detail=str(error)) from None
 

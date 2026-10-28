@@ -103,6 +103,8 @@ def build_report(
 
     as_of = pd.Timestamp(prices.index[-1])
     last_prices = prices[columns].ffill().iloc[-1]
+    # From here on every holding is a share count, whichever way it was entered.
+    holdings = [Holding(h.ticker, h.shares_at(float(last_prices[h.ticker]))) for h in holdings]
     weights = position_weights(holdings, last_prices)
 
     window = prices.loc[as_of - pd.DateOffset(years=lookback_years) :, columns]
@@ -219,6 +221,7 @@ def report_to_dict(report: Report) -> dict[str, Any]:
         "stress_tests": [
             {
                 "scenario": r.scenario.name,
+                "key": r.scenario.key,
                 "start": f"{r.scenario.start:%Y-%m-%d}",
                 "end": f"{r.scenario.end:%Y-%m-%d}",
                 "portfolio_return": r.portfolio_return,
