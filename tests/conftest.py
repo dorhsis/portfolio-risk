@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from portfolio_risk.explain import Explanation
 from portfolio_risk.factors import FACTOR_COLUMNS
 from portfolio_risk.report import MarketData
 
@@ -65,8 +66,11 @@ class FakeLoader:
 class FakeExplainer:
     """Stands in for the LLM: records each call, returns or raises a canned result."""
 
-    def __init__(self, result: str | Exception = "Риск сосредоточен в AAA.") -> None:
+    def __init__(
+        self, result: str | Exception = "Риск сосредоточен в AAA.", unverified: tuple[str, ...] = ()
+    ) -> None:
         self.result = result
+        self.unverified = unverified
         self.reports: list[dict[str, Any]] = []
         self.languages: list[str] = []
 
@@ -76,3 +80,7 @@ class FakeExplainer:
         if isinstance(self.result, Exception):
             raise self.result
         return self.result
+
+    def checked(self, report: dict[str, Any], language: str = "ru") -> Explanation:
+        """The same answer as the checked explainer returns it, with `unverified` numbers."""
+        return Explanation(self(report, language), self.unverified)

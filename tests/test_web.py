@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -7,7 +9,12 @@ from fastapi.testclient import TestClient
 from portfolio_risk.explain import LLMError
 from portfolio_risk.market_data import MarketDataError, TickerMatch
 from portfolio_risk.report import MarketData
-from portfolio_risk.web import MAX_HOLDINGS, MAX_REPORT_CHARS, create_app
+from portfolio_risk.web import (
+    EXPLAIN_TIME_BUDGET_SECONDS,
+    MAX_HOLDINGS,
+    MAX_REPORT_CHARS,
+    create_app,
+)
 
 PASSWORD = "correct horse battery staple"
 PORTFOLIO = "ticker,shares\nAAA,10\nBBB,20\n"
@@ -37,7 +44,7 @@ def _client(
 ) -> TestClient:
     app = create_app(
         loader=loader or FakeLoader(),
-        explainer=explainer or FakeExplainer(),
+        explainer=(explainer or FakeExplainer()).checked,
         env={"EXPLAIN_PASSWORD": PASSWORD} if env is None else env,
         searcher=searcher or FakeSearcher(),
     )
@@ -118,9 +125,27 @@ def test_explain_returns_the_explanation_for_the_right_password() -> None:
     )
 
     assert response.status_code == 200
-    assert response.json() == {"explanation": "Риск сосредоточен в AAA."}
+    assert response.json() == {"explanation": "Риск сосредоточен в AAA.", "unverified_numbers": []}
     assert explainer.reports == [REPORT]
     assert explainer.languages == ["ru"]
+
+
+def test_explain_lists_numbers_the_report_does_not_contain() -> None:
+    explainer = FakeExplainer("Вместе 66%.", unverified=("66%",))
+
+    response = _client(explainer=explainer).post(
+        "/api/explain", json={"report": REPORT, "password": PASSWORD}
+    )
+
+    assert response.json() == {"explanation": "Вместе 66%.", "unverified_numbers": ["66%"]}
+
+
+def test_explain_time_budget_ends_before_the_function_limit() -> None:
+    vercel = json.loads((Path(__file__).parents[1] / "vercel.json").read_text())
+
+    function_limit = vercel["functions"]["app.py"]["maxDuration"]
+
+    assert function_limit > EXPLAIN_TIME_BUDGET_SECONDS
 
 
 def test_explain_answers_in_the_requested_language() -> None:

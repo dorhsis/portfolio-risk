@@ -57,10 +57,12 @@ function init() {
   const explainSubmit = document.getElementById("explain-submit");
   const explainError = document.getElementById("explain-error");
   const explanation = document.getElementById("explanation");
+  const unverifiedNote = document.getElementById("explanation-unverified");
   let currentReport = null;
   let factorsRequested = true;
   let lastError = null;
   let lastExplainError = null;
+  let unverifiedNumbers = [];
   let sections = [];
   let navFrame = 0;
 
@@ -78,9 +80,17 @@ function init() {
     explainError.hidden = false;
   };
 
+  // Numbers in the answer that the server did not find in the report.
+  const showUnverified = (numbers) => {
+    unverifiedNumbers = numbers;
+    unverifiedNote.textContent = t("explain.unverified", { numbers: numbers.join(", ") });
+    unverifiedNote.hidden = numbers.length === 0;
+  };
+
   const resetExplanation = () => {
     explanation.hidden = true;
     explanation.replaceChildren();
+    showUnverified([]);
     explainError.hidden = true;
     lastExplainError = null;
   };
@@ -107,6 +117,7 @@ function init() {
     }
     if (!errorBox.hidden && lastError) showError(lastError);
     if (!explainError.hidden && lastExplainError) showExplainError(lastExplainError);
+    if (unverifiedNumbers.length > 0) showUnverified(unverifiedNumbers);
   });
 
   window.addEventListener(
@@ -193,13 +204,14 @@ function init() {
       t("status.explain"),
     );
     try {
-      const { explanation: text } = await postJson(
+      const { explanation: text, unverified_numbers: unverified } = await postJson(
         "/api/explain",
         { report: currentReport, password: document.getElementById("password").value, language: currentLanguage() },
         EXPLAIN_TIMEOUT_MS,
       );
       explanation.replaceChildren(...text.split(/\n\s*\n/).map((paragraph) => el("p", { text: paragraph.trim() })));
       explanation.hidden = false;
+      showUnverified(unverified ?? []);
     } catch (error) {
       showExplainError(error);
     } finally {

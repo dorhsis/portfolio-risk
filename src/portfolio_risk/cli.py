@@ -7,7 +7,12 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from portfolio_risk.explain import Explainer, LLMError, explain_with_env
+from portfolio_risk.explain import (
+    CheckedExplainer,
+    Explanation,
+    LLMError,
+    explain_checked_with_env,
+)
 from portfolio_risk.market_data import Loader, MarketDataError, load_market_data
 from portfolio_risk.portfolio import load_portfolio
 from portfolio_risk.report import Report, build_report, render_text, report_to_dict
@@ -16,7 +21,7 @@ from portfolio_risk.report import Report, build_report, render_text, report_to_d
 def main(
     argv: Sequence[str] | None = None,
     loader: Loader = load_market_data,
-    explainer: Explainer = explain_with_env,
+    explainer: CheckedExplainer = explain_checked_with_env,
 ) -> int:
     args = _parser().parse_args(argv)
     benchmark = args.benchmark.upper()
@@ -33,22 +38,31 @@ def main(
     exit_code = 0
     if args.explain:
         try:
-            explanation = explainer(payload)
+            explanation = explainer(payload, "ru")
         except LLMError as error:
             print(f"Ошибка LLM: {error}", file=sys.stderr)
             exit_code = 1
+        if explanation and explanation.unverified:
+            unverified = ", ".join(explanation.unverified)
+            print(f"Внимание: этих цифр нет в отчёте, сверьте их: {unverified}", file=sys.stderr)
 
     print(_render(report, payload, explanation, as_json=args.json))
     return exit_code
 
 
-def _render(report: Report, payload: dict[str, Any], explanation: str | None, as_json: bool) -> str:
+def _render(
+    report: Report, payload: dict[str, Any], explanation: Explanation | None, as_json: bool
+) -> str:
     if as_json:
         if explanation is not None:
-            payload = {**payload, "explanation": explanation}
+            payload = {
+                **payload,
+                "explanation": explanation.text,
+                "unverified_numbers": list(explanation.unverified),
+            }
         return json.dumps(payload, ensure_ascii=False, indent=2)
     text = render_text(report)
-    return f"{text}\n\nОБЪЯСНЕНИЕ\n{explanation}" if explanation is not None else text
+    return f"{text}\n\nОБЪЯСНЕНИЕ\n{explanation.text}" if explanation is not None else text
 
 
 def _parser() -> argparse.ArgumentParser:

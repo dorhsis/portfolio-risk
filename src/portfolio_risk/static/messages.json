@@ -171,6 +171,7 @@
     "explain.error503": "Объяснение на этом сайте выключено: владелец не задал пароль.",
     "explain.error502": "Модель не ответила: {detail}",
     "explain.errorOther": "Не удалось объяснить: {detail}",
+    "explain.unverified": "Этих цифр нет в отчёте: {numbers}. Сверьте их с отчётом выше.",
     "footer.text": "Не инвестиционная рекомендация: отчёт описывает риск, а не то, что с ним делать. Котировки и секторы — Yahoo Finance (только для некоммерческого использования), факторы — Kenneth French Data Library, они обновляются с задержкой около двух месяцев.",
     "footer.source": "Исходный код на GitHub"
   },
@@ -346,6 +347,7 @@
     "explain.error503": "Explanations are off on this site: the owner has not set a password.",
     "explain.error502": "The model did not answer: {detail}",
     "explain.errorOther": "Could not explain: {detail}",
+    "explain.unverified": "These figures are not in the report: {numbers}. Check them against the report above.",
     "footer.text": "Not investment advice: the report describes risk, not what to do about it. Prices and sectors come from Yahoo Finance (non-commercial use only) and factors from the Kenneth French Data Library, which updates with a lag of about two months.",
     "footer.source": "Source code on GitHub"
   }

@@ -73,7 +73,7 @@ def test_explain_flag_appends_explanation_to_text_report(
 ) -> None:
     explainer = FakeExplainer()
 
-    exit_code = main([str(_portfolio(tmp_path)), "--explain"], FakeLoader(), explainer)
+    exit_code = main([str(_portfolio(tmp_path)), "--explain"], FakeLoader(), explainer.checked)
 
     out = capsys.readouterr().out
     assert exit_code == 0
@@ -84,7 +84,7 @@ def test_explain_flag_appends_explanation_to_text_report(
 def test_explain_flag_adds_explanation_to_json(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    main([str(_portfolio(tmp_path)), "--explain", "--json"], FakeLoader(), FakeExplainer())
+    main([str(_portfolio(tmp_path)), "--explain", "--json"], FakeLoader(), FakeExplainer().checked)
 
     assert json.loads(capsys.readouterr().out)["explanation"] == "Риск сосредоточен в AAA."
 
@@ -92,7 +92,7 @@ def test_explain_flag_adds_explanation_to_json(
 def test_explainer_is_not_called_without_the_flag(tmp_path: Path) -> None:
     explainer = FakeExplainer()
 
-    main([str(_portfolio(tmp_path))], FakeLoader(), explainer)
+    main([str(_portfolio(tmp_path))], FakeLoader(), explainer.checked)
 
     assert explainer.reports == []
 
@@ -102,9 +102,32 @@ def test_llm_failure_still_prints_report_and_exits_with_error(
 ) -> None:
     explainer = FakeExplainer(LLMError("LLM API returned HTTP 401: Unauthorized"))
 
-    exit_code = main([str(_portfolio(tmp_path)), "--explain"], FakeLoader(), explainer)
+    exit_code = main([str(_portfolio(tmp_path)), "--explain"], FakeLoader(), explainer.checked)
 
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "ПОРТФЕЛЬ на" in captured.out
     assert "HTTP 401" in captured.err
+
+
+def test_unverified_numbers_are_flagged_without_failing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    explainer = FakeExplainer("Вместе 66%.", unverified=("66%",))
+
+    exit_code = main([str(_portfolio(tmp_path)), "--explain"], FakeLoader(), explainer.checked)
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "ОБЪЯСНЕНИЕ\nВместе 66%." in captured.out
+    assert "66%" in captured.err
+
+
+def test_unverified_numbers_are_listed_in_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    explainer = FakeExplainer("Вместе 66%.", unverified=("66%",))
+
+    main([str(_portfolio(tmp_path)), "--explain", "--json"], FakeLoader(), explainer.checked)
+
+    assert json.loads(capsys.readouterr().out)["unverified_numbers"] == ["66%"]

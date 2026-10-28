@@ -4,7 +4,8 @@ Two helpers serve the portfolio editor: /api/parse turns a pasted list or file i
 the same parser the report uses, and /api/search looks tickers up by symbol or company name.
 
 The explanation spends the owner's LLM quota, so it stays off until EXPLAIN_PASSWORD is set on the
-server and every call must present it.
+server and every call must present it. Its numbers are checked against the report, and the ones
+the report does not contain come back as unverified_numbers for the page to flag.
 """
 
 import dataclasses
@@ -20,7 +21,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
-from portfolio_risk.explain import LLMError, LocalizedExplainer, explain_with_env
+from portfolio_risk.explain import (
+    CheckedExplainer,
+    Explanation,
+    LLMError,
+    explain_checked_with_env,
+)
 from portfolio_risk.market_data import (
     Loader,
     MarketDataError,
@@ -38,6 +44,9 @@ MAX_PORTFOLIO_CHARS = 20_000
 # A real report is a few kilobytes; the cap stops the endpoint relaying arbitrary text to the LLM.
 MAX_REPORT_CHARS = 50_000
 MAX_QUERY_CHARS = 60
+# Vercel stops the function at maxDuration in vercel.json; the explanation, retry included, has to
+# finish before that.
+EXPLAIN_TIME_BUDGET_SECONDS = 50
 
 
 class ParseRequest(BaseModel):
@@ -70,9 +79,13 @@ def parse_holdings(text: str) -> list[Holding]:
     return holdings
 
 
+def _explain_in_time(report: dict[str, Any], language: str) -> Explanation:
+    return explain_checked_with_env(report, language, time_budget=EXPLAIN_TIME_BUDGET_SECONDS)
+
+
 def create_app(
     loader: Loader = load_market_data,
-    explainer: LocalizedExplainer = explain_with_env,
+    explainer: CheckedExplainer = _explain_in_time,
     env: Mapping[str, str] = os.environ,
     searcher: Searcher = search_tickers,
 ) -> FastAPI:
@@ -121,7 +134,7 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(error)) from None
 
     @app.post("/api/explain")
-    def explanation(request: ExplainRequest) -> dict[str, str]:
+    def explanation(request: ExplainRequest) -> dict[str, Any]:
         expected = env.get("EXPLAIN_PASSWORD")
         if not expected:
             raise HTTPException(
@@ -130,9 +143,10 @@ def create_app(
         if not hmac.compare_digest(request.password.encode(), expected.encode()):
             raise HTTPException(status_code=401, detail="wrong password")
         try:
-            return {"explanation": explainer(request.report, request.language)}
+            answer = explainer(request.report, request.language)
         except LLMError as error:
             raise HTTPException(status_code=502, detail=str(error)) from None
+        return {"explanation": answer.text, "unverified_numbers": list(answer.unverified)}
 
     app.frontend("/", directory=STATIC_DIR, fallback=None)
     return app
